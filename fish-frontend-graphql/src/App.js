@@ -44,14 +44,6 @@ class App extends React.Component {
 
   // sets a state field to be a list of all the different rooms in the server
   getRooms() {
-    const query = `
-      query {
-        rooms {
-          name
-        }
-      }
-    `;
-
     fetch("http://localhost:4000/graphql", {
       method: "POST",
       headers: {

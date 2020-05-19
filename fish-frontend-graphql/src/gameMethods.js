@@ -3,7 +3,7 @@ const fetch = require("node-fetch");
 const convertArray = (arr) => {
   let arrString = "";
   arr.forEach((elem) => {
-    arrString += `\"${elem}\", `;
+    arrString += `"${elem}", `;
   });
   return arrString.slice(0, -2);
 };
