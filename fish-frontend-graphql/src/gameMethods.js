@@ -210,11 +210,9 @@ function makeClaim(room, team, claims) {
     });
   });
 
-  console.log(cardsInClaim);
-
   // if all the cards could be a valid claim, then we check if each player has what they
   // are said to have and if the claim consists of six cards
-  if (allInSameHalfSuit(cardsInClaim) && cardsInClaim.length === 6) {
+  if (allInSameHalfSuit(cardsInClaim) && (cardsInClaim.length === 6)) {
     // calling the helper, and duplicating the claims array for the accumulator
     makeClaimHelp(room, team, claims, claims.slice());
   } else {
@@ -379,10 +377,11 @@ function inSameHalfSuit(card1, card2) {
 
 // are all of the cards in the given list in the same half suit?
 function allInSameHalfSuit(cards) {
-  let lastCard = cards.pop();
+  let duplicateCards = cards.slice();
+  let lastCard = duplicateCards.pop();
   //console.log("Last card: " + lastCard);
 
-  let allInSameHalfSuit = cards.reduce((acc, card) => {
+  let allInSameHalfSuit = duplicateCards.reduce((acc, card) => {
     //console.log("card being checked: " + card);
     return acc && inSameHalfSuit(lastCard, card);
   }, true);
