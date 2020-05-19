@@ -265,7 +265,6 @@ const root = {
   addPlayer: ({ roomName, playerName }) => {
     let room = ROOMS.get(roomName);
     let team = room.addPlayer(playerName);
-    //return ROOMS.get(roomName);
     console.log(team);
     return team;
   },
