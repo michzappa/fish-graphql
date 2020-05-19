@@ -59,85 +59,99 @@ const cards = [
 ];
 
 class Room {
-  constructor(data) {
+  team1: Team;
+  team2: Team;
+  move: string;
+  turn: string;
+  cards: string[];
+  constructor(data: Object) {
+    this.team1 = new Team({});
+    this.team2 = new Team({});
+    this.move = "";
+    this.turn = "";
+    this.cards = _.shuffle(cards);
     Object.assign(this, data);
   }
   // returns the next hand of cards in this room's deck (nine cards)
-  getNextHand() {
-    let hand = [];
+  getNextHand(): string[] {
+    let hand: string[] = [];
     for (let i = 0; i < 9; i += 1) {
-      let card = this.cards.pop();
+      let card = this.cards[this.cards.length-1];
+      this.cards.pop();
       hand.push(card);
     }
     return hand;
   }
 
   // adds a player to this room
-  addPlayer(playerName) {
+  addPlayer(playerName: string) {
     let team1players = this.team1.players;
-    console.log(team1players);
-    let team1size = Object.keys(team1players).length;
-    console.log(team1size);
+    let team1size = team1players.length;
 
     let team2players = this.team2.players;
-    console.log(team2players);
-    let team2size = Object.keys(team2players).length;
-    console.log(team2size);
+    let team2size = team2players.length;
     let teamAdded;
 
     if (team1size > 2 && team2size > 2) {
-      console.log("Both teams full");
+      // do nothing as both teams are full
     } else {
-      console.log(`adding player ${playerName}`);
-      let hand = this.getNextHand();
+      let hand: string[] = this.getNextHand();
+      this.turn = playerName;
       // randomly put the new player into a team, except if one team is full
       if (Math.random() < 0.5) {
-        console.log("want to add to team 1");
         // want to add to team 1
         if (team1size > 2) {
-          console.log(`adding player ${playerName} to team2`);
           this.team2.addPlayer(playerName, hand);
           team2size += 1;
           teamAdded = "team2";
+          return teamAdded;
         } else {
-          console.log(`adding player ${playerName} to team1`);
           this.team1.addPlayer(playerName, hand);
           team1size += 1;
           teamAdded = "team1";
+          return teamAdded;
         }
       } else {
-        console.log("want to add to team 2");
         if (team2size > 2) {
-          console.log(this.team1.players);
           this.team1.addPlayer(playerName, hand);
           team1size += 1;
           teamAdded = "team1";
+          return teamAdded;
         } else {
-          console.log(this.team2.players);
           this.team2.addPlayer(playerName, hand);
           team2size += 1;
           teamAdded = "team2";
+          return teamAdded;
         }
       }
-      this.turn = playerName;
     }
   }
 }
 
 class Team {
-  constructor(data) {
+  players: Player[];
+  claims: String[][];
+
+  constructor(data: Object) {
+    this.players = [];
+    this.claims = [];
+
     Object.assign(this, data);
   }
 
   // adds a player with the given name and hand to this team
-  addPlayer(playerName, hand) {
+  addPlayer(playerName: string, hand: string[]) {
     console.log(`adding player ${playerName} to team in team method`);
-    this.players.push(new Player(playerName, hand));
+    this.players.push(new Player({ name: playerName, hand: hand }));
   }
 }
 
 class Player {
-  constructor(data) {
+  name: string;
+  hand: string[];
+  constructor(data: Object) {
+    this.name = "";
+    this.hand = [];
     Object.assign(this, data);
   }
 }
@@ -152,10 +166,38 @@ const schema = buildASTSchema(gql`
   type Query {
     rooms: [Room]
     room(name: String!): Room
+    getMove(roomName: String): String
+    getTurn(roomName: String): String
+    getTeam(roomName: String, teamName: String): Team
+    getClaims(roomName: String, teamName: String): [String]
+    getPlayer(roomName: String, teamName: String, playerName: String): Player
   }
 
   type Mutation {
-    addPlayer(roomName: String, playerName: String): Room
+    addRoom(roomName: String): Room
+    deleteRoom(roomName: String): [Room]
+    addPlayer(roomName: String, playerName: String): String
+    changeMove(roomName: String, move: String): Room
+    changeTurn(roomName: String, turn: String): Room
+    addClaim(roomName: String, teamName: String, claim: String): Team
+    addCardToPlayer(
+      roomName: String
+      teamName: String
+      playerName: String
+      card: String
+    ): Player
+    removeCardFromPlayer(
+      roomName: String
+      teamName: String
+      playerName: String
+      card: String
+    ): Boolean
+    setPlayerHand(
+      roomName: String
+      teamName: String
+      playerName: String
+      hand: [String]
+    ): Player
   }
 
   type Room {
@@ -169,6 +211,7 @@ const schema = buildASTSchema(gql`
 
   type Team {
     players: [Player]
+    claims: [String]
   }
 
   type Player {
@@ -184,10 +227,87 @@ const root = {
   room: ({ name }) => {
     return ROOMS.get(name);
   },
+  getMove: ({ roomName }) => {
+    let room = ROOMS.get(roomName);
+    return room.move;
+  },
+  getTurn: ({ roomName }) => {
+    let room = ROOMS.get(roomName);
+    return room.turn;
+  },
+  getTeam: ({ roomName, teamName }) => {
+    let team = ROOMS.get(roomName)[teamName];
+    return team;
+  },
+  getClaims: ({ roomName, teamName }) => {
+    let team = ROOMS.get(roomName)[teamName];
+    return team.claims;
+  },
+  getPlayer: ({ roomName, teamName, playerName }) => {
+    let players = ROOMS.get(roomName)[teamName].players;
+    console.log(players);
+    let wantedPlayer;
+    players.forEach((player) => {
+      if (player.name == playerName) {
+        wantedPlayer = player;
+      }
+    });
+    return wantedPlayer;
+  },
+  addRoom: ({ roomName }) => {
+    ROOMS.set(roomName, new Room({ name: roomName }));
+    return ROOMS.get(roomName);
+  },
+  deleteRoom: ({ roomName }) => {
+    ROOMS.delete(roomName);
+    return ROOMS.values();
+  },
   addPlayer: ({ roomName, playerName }) => {
     let room = ROOMS.get(roomName);
-    room.addPlayer(playerName);
-    return ROOMS.get(roomName);
+    let team = room.addPlayer(playerName);
+    //return ROOMS.get(roomName);
+    console.log(team);
+    return team;
+  },
+  changeMove: ({ roomName, move }) => {
+    let room = ROOMS.get(roomName);
+    room.move = move;
+    return room;
+  },
+  changeTurn: ({ roomName, turn }) => {
+    let room = ROOMS.get(roomName);
+    room.turn = turn;
+    return room;
+  },
+  addClaim: ({ roomName, teamName, claim }) => {
+    let team = ROOMS.get(roomName)[teamName];
+    team.claims.push(claim);
+    return team;
+  },
+  addCardToPlayer: ({ roomName, teamName, playerName, card }) => {
+    let players = ROOMS.get(roomName)[teamName].players;
+    console.log(players);
+    let wantedPlayer: Player = new Player({});;
+    players.forEach((player: Player) => {
+      if (player.name == playerName) {
+        wantedPlayer = player;
+      }
+    });
+
+    wantedPlayer.hand.push(card);
+    return wantedPlayer;
+  },
+  setPlayerHand: ({ roomName, teamName, playerName, hand }) => {
+    let players = ROOMS.get(roomName)[teamName].players;
+    console.log(players);
+    let wantedPlayer = new Player({});
+    players.forEach((player: Player) => {
+      if (player.name == playerName) {
+        wantedPlayer = player;
+      }
+    });
+    wantedPlayer.hand = hand;
+    return wantedPlayer;
   },
 };
 
@@ -220,7 +340,8 @@ const initializeData = () => {
   fakeRooms.forEach((room) => ROOMS.set(room.name, new Room(room)));
 };
 
-initializeData();
+//initializeData();
+ROOMS.set("test", new Room({ name: "test" }));
 
 let app = express();
 app.use(cors());
